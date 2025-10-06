@@ -62,6 +62,7 @@ public class ProductService {
             existingProduct.setReleaseDate(product.getReleaseDate());
         }
 
+        existingProduct.setProductAvailable(product.isProductAvailable());
 
         existingProduct.setImageName(imageFile.getName());
         existingProduct.setImageType(imageFile.getContentType());

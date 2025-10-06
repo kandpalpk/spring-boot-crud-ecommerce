@@ -68,6 +68,7 @@ public class ProductController {
         Product product1 = null;
         try{
             product1 = service.updateProduct(id,product,imageFile);
+            System.out.println(product1.toString());
 
         } catch (IOException e) {
             return new ResponseEntity<>("Failed to Update",HttpStatus.BAD_REQUEST);

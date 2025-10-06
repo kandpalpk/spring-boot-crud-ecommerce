@@ -9,6 +9,7 @@ import lombok.Generated;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -29,7 +30,7 @@ public class Product {
     private String category;
 
     /*@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")*/
-    private Date releaseDate;
+    private LocalDate releaseDate;
     private boolean productAvailable;
 
     @JsonProperty("stockQuantity")
