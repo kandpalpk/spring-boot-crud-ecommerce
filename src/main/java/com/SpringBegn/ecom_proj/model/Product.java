@@ -23,6 +23,7 @@ public class Product {
     private String name;
 
     @JsonProperty("description")
+    @Column(name = "description")
     private String desc;
 
     private String brand;
@@ -39,7 +40,7 @@ public class Product {
     private String imageName;
     private String imageType;
 
-    @Lob
+    @Column(columnDefinition = "bytea")
     private byte[] imageData;
 
 }
