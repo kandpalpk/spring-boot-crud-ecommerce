@@ -3,6 +3,10 @@ package com.SpringBegn.ecom_proj.controller;
 import com.SpringBegn.ecom_proj.model.Product;
 import com.SpringBegn.ecom_proj.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -16,24 +20,63 @@ public class WebController {
     @Autowired
     private ProductService service;
 
+
     //Home Page
     @GetMapping("/")
-    public String home(Model model){
+    public String home(Model model,
+                       @RequestParam(defaultValue = "0") int page,
+                       @RequestParam(defaultValue = "6") int size,
+                       @RequestParam(defaultValue = "id") String sortBy,
+                       @RequestParam(defaultValue = "asc") String sortDir){
 
-        List<Product> products = service.getAllProducts();
-        model.addAttribute("products",products);
+        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+                    Sort.by(sortBy).descending() :
+                    Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page,size,sort);
+        Page<Product> productPage = service.getAllProducts(pageable);
+
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("products", productPage.getContent());
         model.addAttribute("newProduct", new Product());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", productPage.getTotalPages());
+        model.addAttribute("totalItems", productPage.getTotalElements());
+        model.addAttribute("pageSize", size);
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
         return "index";
     }
 
     @GetMapping("/search")
-    public String search(@RequestParam String keyword, Model model){
-       List<Product> products = service.searchProducts(keyword);
-       model.addAttribute("products",products);
-       model.addAttribute("newProduct",new Product());
-       model.addAttribute("searchKeyword", keyword);
+    public String search(@RequestParam String keyword,
+                         Model model,
+                         @RequestParam(defaultValue="0") int page,
+                         @RequestParam(defaultValue="6") int size,
+                         @RequestParam(defaultValue = "id") String sortBy,
+                         @RequestParam(defaultValue = "asc") String sortDir
+    ){
+        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+                Sort.by(sortBy).descending() :
+                Sort.by(sortBy).ascending();
 
-       return "index";
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = service.searchProducts(keyword, pageable);
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("products", productPage.getContent());
+        model.addAttribute("newProduct", new Product());
+        model.addAttribute("searchKeyword", keyword);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", productPage.getTotalPages());
+        model.addAttribute("totalItems", productPage.getTotalElements());
+        model.addAttribute("pageSize", size);
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
+
+        return "index";
+
     }
 
     @PostMapping("/products")

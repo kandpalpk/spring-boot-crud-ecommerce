@@ -7,6 +7,23 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .pagination-controls {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .page-size-selector, .sort-selector {
+            display: inline-block;
+            width: auto;
+            margin-left: 10px;
+        }
+        .pagination-info {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
 </head>
 <body>
 <div class="container-fluid">
@@ -27,6 +44,10 @@
                     <input type="text" name="keyword" class="form-control me-2"
                            placeholder="Search products..."
                            th:value="${searchKeyword}">
+                    <input type="hidden" name="page" value="0">
+                    <input type="hidden" name="size" th:value="${pageSize ?: 6}">
+                    <input type="hidden" name="sortBy" th:value="${sortBy ?: 'id'}">
+                    <input type="hidden" name="sortDir" th:value="${sortDir ?: 'asc'}">
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="fas fa-search"></i> Search
                     </button>
@@ -45,8 +66,40 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
                     Search results for "<span th:text="${searchKeyword}"></span>"
-                    - <span th:text="${#lists.size(products)}"></span> products found
+                    - <span th:text="${totalItems ?: #lists.size(products)}"></span> products found
                     <a href="/" class="btn btn-sm btn-outline-primary ms-2">Clear Search</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorting and Page Size Controls -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <label for="pageSizeSelect" class="form-label me-2 mb-0">Items per page:</label>
+                    <select id="pageSizeSelect" class="form-select page-size-selector" onchange="changePageSize()">
+                        <option value="6" th:selected="${(pageSize ?: 6) == 6}">6</option>
+                        <option value="12" th:selected="${(pageSize ?: 6) == 12}">12</option>
+                        <option value="24" th:selected="${(pageSize ?: 6) == 24}">24</option>
+                        <option value="48" th:selected="${(pageSize ?: 6) == 48}">48</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="d-flex align-items-center justify-content-md-end">
+                    <label for="sortSelect" class="form-label me-2 mb-0">Sort by:</label>
+                    <select id="sortSelect" class="form-select sort-selector me-2" onchange="changeSorting()">
+                        <option value="id" th:selected="${(sortBy ?: 'id') == 'id'}">ID</option>
+                        <option value="name" th:selected="${(sortBy ?: 'id') == 'name'}">Name</option>
+                        <option value="price" th:selected="${(sortBy ?: 'id') == 'price'}">Price</option>
+                        <option value="releaseDate" th:selected="${(sortBy ?: 'id') == 'releaseDate'}">Release Date</option>
+                    </select>
+
+                    <select id="sortDirSelect" class="form-select sort-selector" onchange="changeSorting()">
+                        <option value="asc" th:selected="${(sortDir ?: 'asc') == 'asc'}">Ascending</option>
+                        <option value="desc" th:selected="${(sortDir ?: 'asc') == 'desc'}">Descending</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -56,7 +109,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-boxes"></i> Products
-                    <span class="badge bg-primary ms-2" th:text="${#lists.size(products)}">0</span>
+                    <span class="badge bg-primary ms-2" th:text="${totalItems ?: #lists.size(products)}">0</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -72,10 +125,32 @@
                     <table class="table table-hover">
                         <thead class="table-dark">
                         <tr>
+                            <th>
+                                <a th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='id', sortDir=${sortBy == 'id' ? reverseSortDir : 'asc'})} :
+                                           @{/(page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='id', sortDir=${sortBy == 'id' ? reverseSortDir : 'asc'})}"
+                                   class="text-white text-decoration-none">
+                                    ID <i class="fas fa-sort" th:classappend="${sortBy == 'id'} ? (${sortDir == 'asc'} ? 'fa-sort-up' : 'fa-sort-down') : ''"></i>
+                                </a>
+                            </th>
                             <th>Image</th>
-                            <th>Name</th>
+                            <th>
+                                <a th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='name', sortDir=${sortBy == 'name' ? reverseSortDir : 'asc'})} :
+                                           @{/(page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='name', sortDir=${sortBy == 'name' ? reverseSortDir : 'asc'})}"
+                                   class="text-white text-decoration-none">
+                                    Name <i class="fas fa-sort" th:classappend="${sortBy == 'name'} ? (${sortDir == 'asc'} ? 'fa-sort-up' : 'fa-sort-down') : ''"></i>
+                                </a>
+                            </th>
                             <th>Brand</th>
-                            <th>Price</th>
+                            <th>
+                                <a th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='price', sortDir=${sortBy == 'price' ? reverseSortDir : 'asc'})} :
+                                           @{/(page=${currentPage ?: 0}, size=${pageSize ?: 6}, sortBy='price', sortDir=${sortBy == 'price' ? reverseSortDir : 'asc'})}"
+                                   class="text-white text-decoration-none">
+                                    Price <i class="fas fa-sort" th:classappend="${sortBy == 'price'} ? (${sortDir == 'asc'} ? 'fa-sort-up' : 'fa-sort-down') : ''"></i>
+                                </a>
+                            </th>
                             <th>Category</th>
                             <th>Stock</th>
                             <th>Status</th>
@@ -84,6 +159,9 @@
                         </thead>
                         <tbody>
                         <tr th:each="product : ${products}">
+                            <td>
+                                <strong th:text="${product.id}">1</strong>
+                            </td>
                             <td>
                                 <img th:if="${product.imageData != null}"
                                      th:src="@{/api/product/{id}/image(id=${product.id})}"
@@ -115,12 +193,12 @@
                                 <small class="text-muted">units</small>
                             </td>
                             <td>
-                                        <span th:if="${product.productAvailable}" class="badge bg-success">
-                                            <i class="fas fa-check"></i> Available
-                                        </span>
+                                <span th:if="${product.productAvailable}" class="badge bg-success">
+                                    <i class="fas fa-check"></i> Available
+                                </span>
                                 <span th:if="${!product.productAvailable}" class="badge bg-danger">
-                                            <i class="fas fa-times"></i> Unavailable
-                                        </span>
+                                    <i class="fas fa-times"></i> Unavailable
+                                </span>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -138,6 +216,93 @@
                         </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" th:if="${totalPages != null and totalPages > 1}">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="pagination-info">
+                        Showing <strong th:text="${(currentPage ?: 0) * (pageSize ?: 6) + 1}">1</strong>
+                        to <strong th:text="${#numbers.formatInteger(((currentPage ?: 0) + 1) * (pageSize ?: 6) > (totalItems ?: 0) ? (totalItems ?: 0) : ((currentPage ?: 0) + 1) * (pageSize ?: 6), 1)}">6</strong>
+                        of <strong th:text="${totalItems ?: 0}">0</strong> products
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <nav aria-label="Product pagination" class="d-flex justify-content-md-end">
+                        <ul class="pagination mb-0">
+                            <!-- First Page Button -->
+                            <li class="page-item" th:classappend="${(currentPage ?: 0) == 0} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=0, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})} :
+                                           @{/(page=0, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})}"
+                                   th:if="${(currentPage ?: 0) > 0}">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                                <span class="page-link" th:if="${(currentPage ?: 0) == 0}">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </span>
+                            </li>
+
+                            <!-- Previous Button -->
+                            <li class="page-item" th:classappend="${(currentPage ?: 0) == 0} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${(currentPage ?: 0) - 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})} :
+                                           @{/(page=${(currentPage ?: 0) - 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})}"
+                                   th:if="${(currentPage ?: 0) > 0}">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                                <span class="page-link" th:if="${(currentPage ?: 0) == 0}">
+                                    <i class="fas fa-angle-left"></i>
+                                </span>
+                            </li>
+
+                            <!-- Page Numbers -->
+                            <li class="page-item"
+                                th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(0, (currentPage ?: 0) - 2), T(java.lang.Math).min((totalPages ?: 1) - 1, (currentPage ?: 0) + 2))}"
+                                th:classappend="${pageNum == (currentPage ?: 0)} ? 'active'">
+                                <a class="page-link"
+                                   th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${pageNum}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})} :
+                                           @{/(page=${pageNum}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})}"
+                                   th:text="${pageNum + 1}"
+                                   th:classappend="${pageNum == (currentPage ?: 0)} ? 'fw-bold'">1</a>
+                            </li>
+
+                            <!-- Next Button -->
+                            <li class="page-item" th:classappend="${(currentPage ?: 0) >= (totalPages ?: 1) - 1} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${(currentPage ?: 0) + 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})} :
+                                           @{/(page=${(currentPage ?: 0) + 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})}"
+                                   th:if="${(currentPage ?: 0) < (totalPages ?: 1) - 1}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                                <span class="page-link" th:if="${(currentPage ?: 0) >= (totalPages ?: 1) - 1}">
+                                    <i class="fas fa-angle-right"></i>
+                                </span>
+                            </li>
+
+                            <!-- Last Page Button -->
+                            <li class="page-item" th:classappend="${(currentPage ?: 0) >= (totalPages ?: 1) - 1} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="${searchKeyword != null} ?
+                                           @{/search(keyword=${searchKeyword}, page=${(totalPages ?: 1) - 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})} :
+                                           @{/(page=${(totalPages ?: 1) - 1}, size=${pageSize ?: 6}, sortBy=${sortBy ?: 'id'}, sortDir=${sortDir ?: 'asc'})}"
+                                   th:if="${(currentPage ?: 0) < (totalPages ?: 1) - 1}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                                <span class="page-link" th:if="${(currentPage ?: 0) >= (totalPages ?: 1) - 1}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </span>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -240,5 +405,47 @@
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    function changePageSize() {
+        const pageSize = document.getElementById('pageSizeSelect').value;
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchKeyword = urlParams.get('keyword');
+
+        if (searchKeyword) {
+            window.location.href = `/search?keyword=${encodeURIComponent(searchKeyword)}&page=0&size=${pageSize}&sortBy=${urlParams.get('sortBy') || 'id'}&sortDir=${urlParams.get('sortDir') || 'asc'}`;
+        } else {
+            window.location.href = `/?page=0&size=${pageSize}&sortBy=${urlParams.get('sortBy') || 'id'}&sortDir=${urlParams.get('sortDir') || 'asc'}`;
+        }
+    }
+
+    function changeSorting() {
+        const sortBy = document.getElementById('sortSelect').value;
+        const sortDir = document.getElementById('sortDirSelect').value;
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchKeyword = urlParams.get('keyword');
+
+        if (searchKeyword) {
+            window.location.href = `/search?keyword=${encodeURIComponent(searchKeyword)}&page=0&size=${urlParams.get('size') || '6'}&sortBy=${sortBy}&sortDir=${sortDir}`;
+        } else {
+            window.location.href = `/?page=0&size=${urlParams.get('size') || '6'}&sortBy=${sortBy}&sortDir=${sortDir}`;
+        }
+    }
+
+    // Auto-submit search with current pagination parameters
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchForm = document.querySelector('form[action="/search"]');
+        if (searchForm) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sizeInput = searchForm.querySelector('input[name="size"]');
+            const sortByInput = searchForm.querySelector('input[name="sortBy"]');
+            const sortDirInput = searchForm.querySelector('input[name="sortDir"]');
+
+            if (sizeInput) sizeInput.value = urlParams.get('size') || '6';
+            if (sortByInput) sortByInput.value = urlParams.get('sortBy') || 'id';
+            if (sortDirInput) sortDirInput.value = urlParams.get('sortDir') || 'asc';
+        }
+    });
+</script>
 </body>
 </html>

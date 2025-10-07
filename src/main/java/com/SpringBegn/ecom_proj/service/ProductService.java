@@ -3,6 +3,8 @@ package com.SpringBegn.ecom_proj.service;
 import com.SpringBegn.ecom_proj.model.Product;
 import com.SpringBegn.ecom_proj.repo.ProductRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,6 +18,10 @@ public class ProductService {
     private ProductRepo repo;
     public List<Product> getAllProducts() {
         return repo.findAll();
+    }
+
+    public Page<Product> getAllProducts(Pageable page) {
+        return repo.findAll(page);
     }
 
     public Product getProductById(int id) {
@@ -77,6 +83,10 @@ public class ProductService {
 
     public List<Product> searchProducts(String keyword) {
         return repo.searchProducts(keyword);
+    }
+
+    public Page<Product> searchProducts(String keyword, Pageable pageable){
+        return repo.searchProducts(keyword,pageable);
     }
 
 }
