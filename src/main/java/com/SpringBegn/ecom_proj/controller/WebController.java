@@ -1,7 +1,12 @@
 package com.SpringBegn.ecom_proj.controller;
 
+import com.SpringBegn.ecom_proj.model.CartItem;
+import com.SpringBegn.ecom_proj.model.Order;
 import com.SpringBegn.ecom_proj.model.Product;
+import com.SpringBegn.ecom_proj.service.CartService;
+import com.SpringBegn.ecom_proj.service.OrderService;
 import com.SpringBegn.ecom_proj.service.ProductService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Controller
@@ -20,6 +26,11 @@ public class WebController {
     @Autowired
     private ProductService service;
 
+    @Autowired
+    private CartService cartService;
+
+    @Autowired
+    private OrderService orderService;
 
     //Home Page
     @GetMapping("/")
@@ -114,4 +125,87 @@ public class WebController {
         service.deleteProduct(id);
         return "redirect:/";
     }
+
+    //Add to Cart
+    @PostMapping("/add-to-cart/{id}")
+    public String addToCart(@PathVariable int id, @RequestParam(defaultValue = "1") int quantity, HttpSession session) {
+
+        Product product = service.getProductById(id);
+        String sessionId = session.getId();
+
+        cartService.addToCart(sessionId, product, quantity);
+
+        return "redirect:/?added=true";
+    }
+
+    //View Cart
+    @GetMapping("/cart")
+    public String viewCart(Model model, HttpSession session){
+        String sessionId = session.getId();
+        List<CartItem> cartItems = cartService.getCartItems(sessionId);
+
+        BigDecimal total = cartItems.stream()
+                .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        model.addAttribute("cartItems",cartItems);
+        model.addAttribute("total",total);
+
+        return "total";
+    }
+
+    //Remove From Cart
+    @GetMapping("/remove-from-cart/{productId}")
+    public String removeFromCart(@PathVariable Long productId, HttpSession session){
+        String sessionId = session.getId();
+        cartService.removeFromCart(sessionId, productId);
+        return "redirect:/cart";
+    }
+
+    //Checkout Page
+    @GetMapping("/checkout")
+    public String checkout(Model model, HttpSession session){
+        String sessionId = session.getId();
+        List<CartItem> cartItems = cartService.getCartItems(sessionId);
+
+        if(cartItems.isEmpty()){
+            return "redirect:/cart";
+        }
+
+        BigDecimal total = cartItems.stream()
+                .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        model.addAttribute("cartItems",cartItems);
+        model.addAttribute("total",total);
+        model.addAttribute("orders",new Order());
+
+        return "checkout";
+    }
+
+    //Process Order
+
+    public String placeOrder(@ModelAttribute Order order, HttpSession session, Model model){
+        String sessionId = session.getId();
+        List<CartItem> cartItems = cartService.getCartItems(sessionId);
+
+        BigDecimal total = cartItems.stream()
+                .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        order.setTotalAmount(total);
+        Order savedOrder = orderService.createOrder(order,sessionId);
+
+        return "redirect:/order-success/"+savedOrder.getOrderNumber();
+
+    }
+
+    //Order Success
+    @GetMapping("/order-success/{orderNumber}")
+    public String orderSuccess(@PathVariable String orderNumber, Model model){
+        Order order = orderService.getOrderByNumber(orderNumber);
+        model.addAttribute("order",order);
+        return "order-success";
+    }
+
 }

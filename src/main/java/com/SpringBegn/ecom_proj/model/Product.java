@@ -19,6 +19,11 @@ import java.util.Date;
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @SequenceGenerator(
+            name = "product_seq",
+            sequenceName = "product_id_seq",
+            allocationSize = 1  // Match PostgreSQL default increment
+    )
     private int id;
     private String name;
 
