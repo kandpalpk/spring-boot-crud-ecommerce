@@ -185,6 +185,7 @@ public class WebController {
 
     //Process Order
 
+    @PostMapping("/place-order")
     public String placeOrder(@ModelAttribute Order order, HttpSession session, Model model){
         String sessionId = session.getId();
         List<CartItem> cartItems = cartService.getCartItems(sessionId);
