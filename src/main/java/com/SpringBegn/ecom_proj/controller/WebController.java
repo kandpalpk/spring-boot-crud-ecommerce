@@ -151,7 +151,7 @@ public class WebController {
         model.addAttribute("cartItems",cartItems);
         model.addAttribute("total",total);
 
-        return "total";
+        return "cart";
     }
 
     //Remove From Cart
@@ -178,7 +178,7 @@ public class WebController {
 
         model.addAttribute("cartItems",cartItems);
         model.addAttribute("total",total);
-        model.addAttribute("orders",new Order());
+        model.addAttribute("order",new Order());
 
         return "checkout";
     }
