@@ -1,8 +1,6 @@
 package com.SpringBegn.ecom_proj.controller;
 
-import com.SpringBegn.ecom_proj.model.CartItem;
-import com.SpringBegn.ecom_proj.model.Order;
-import com.SpringBegn.ecom_proj.model.Product;
+import com.SpringBegn.ecom_proj.model.*;
 import com.SpringBegn.ecom_proj.service.CartService;
 import com.SpringBegn.ecom_proj.service.OrderService;
 import com.SpringBegn.ecom_proj.service.ProductService;
@@ -12,6 +10,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.SpringBegn.ecom_proj.model.Order;
+import com.SpringBegn.ecom_proj.repo.OrderRepository;
+import com.SpringBegn.ecom_proj.repo.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -31,6 +35,12 @@ public class WebController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     //Home Page
     @GetMapping("/")
@@ -59,6 +69,20 @@ public class WebController {
         model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
         return "index";
     }
+
+    private User getCurrentUser(HttpSession session) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            return userRepository.findByUsername(auth.getName()).orElse(null);
+        }
+        String userEmail = (String) session.getAttribute("userEmail");
+        if (userEmail != null) {
+            return userRepository.findByEmail(userEmail).orElse(null);
+        }
+
+        return null;
+    }
+
 
     @GetMapping("/search")
     public String search(@RequestParam String keyword,
@@ -186,20 +210,111 @@ public class WebController {
     //Process Order
 
     @PostMapping("/place-order")
-    public String placeOrder(@ModelAttribute Order order, HttpSession session, Model model){
-        String sessionId = session.getId();
-        List<CartItem> cartItems = cartService.getCartItems(sessionId);
+    public String placeOrder(@ModelAttribute Order order, HttpSession session) {
+        try {
+            String sessionId = session.getId();
+            List<CartItem> cartItems = cartService.getCartItems(sessionId);
 
-        BigDecimal total = cartItems.stream()
-                .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (cartItems.isEmpty()) {
+                return "redirect:/cart?error=empty";
+            }
 
-        order.setTotalAmount(total);
-        Order savedOrder = orderService.createOrder(order,sessionId);
+            BigDecimal total = cartItems.stream()
+                    .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return "redirect:/order-success/"+savedOrder.getOrderNumber();
+            order.setTotalAmount(total);
 
+            // Get current user and set their email
+            User currentUser = getCurrentUser(session);
+            if (currentUser != null) {
+                // Override with user's actual email if they're logged in
+                order.setCustomerEmail(currentUser.getEmail());
+
+                // If they didn't fill name, use their profile name
+                if (order.getCustomerName() == null || order.getCustomerName().trim().isEmpty()) {
+                    String fullName = (currentUser.getFirstName() != null ? currentUser.getFirstName() + " " : "") +
+                            (currentUser.getLastName() != null ? currentUser.getLastName() : "");
+                    if (!fullName.trim().isEmpty()) {
+                        order.setCustomerName(fullName.trim());
+                    }
+                }
+            }
+
+            Order savedOrder = orderService.createOrder(order, sessionId);
+
+            return "redirect:/order-success/" + savedOrder.getOrderNumber();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "redirect:/checkout?error=true";
+        }
     }
+
+
+    @GetMapping("/orders")
+    public String viewOrders(Model model, HttpSession session) {
+        User currentUser = getCurrentUser(session);
+
+        if (currentUser == null) {
+            return "redirect:/login?redirect=/orders";
+        }
+
+        // Try multiple ways to find orders
+        List<Order> orders = new ArrayList<>();
+
+        // Method 1: By email
+        orders.addAll(orderRepository.findByCustomerEmailOrderByOrderDateDesc(currentUser.getEmail()));
+
+        // Method 2: If no orders found, try by name (if user filled checkout form)
+        if (orders.isEmpty() && currentUser.getFirstName() != null) {
+            String fullName = currentUser.getFirstName() + " " +
+                    (currentUser.getLastName() != null ? currentUser.getLastName() : "");
+            orders.addAll(orderRepository.findByCustomerNameContainingIgnoreCaseOrderByOrderDateDesc(fullName));
+        }
+
+        // Method 3: For debugging - show recent orders if still empty (remove this later)
+        if (orders.isEmpty()) {
+            System.out.println("No orders found for user: " + currentUser.getEmail());
+            System.out.println("Checking all recent orders...");
+            List<Order> allOrders = orderRepository.findAll();
+            System.out.println("Total orders in system: " + allOrders.size());
+            allOrders.forEach(o -> System.out.println("Order: " + o.getOrderNumber() + ", Email: " + o.getCustomerEmail()));
+        }
+
+        model.addAttribute("orders", orders);
+        model.addAttribute("user", currentUser);
+
+        return "orders";
+    }
+
+    @GetMapping("/debug-orders")
+    public String debugOrders(Model model, HttpSession session) {
+        User currentUser = getCurrentUser(session);
+        List<Order> allOrders = orderRepository.findAll();
+
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("allOrders", allOrders);
+        model.addAttribute("userEmail", currentUser != null ? currentUser.getEmail() : "No user");
+
+        return "debug-orders"; // Create this template or just return JSON
+    }
+
+
+
+
+    @GetMapping("/profile")
+    public String viewProfile(Model model, HttpSession session) {
+        User currentUser = getCurrentUser(session);
+
+        if (currentUser == null) {
+            return "redirect:/login?redirect=/profile";
+        }
+
+        model.addAttribute("user", currentUser);
+        return "profile";
+    }
+
+
 
     //Order Success
     @GetMapping("/order-success/{orderNumber}")
@@ -214,15 +329,21 @@ public class WebController {
         return "login";
     }
 
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        // Clear session
+        session.invalidate();
+
+        // Clear Spring Security context
+        SecurityContextHolder.clearContext();
+
+        return "redirect:/?logout=true";
+    }
+
     @GetMapping("/register")
     public String registerPage() {
         return "register";
     }
 
-    @GetMapping("/logout")
-    public String logout(HttpSession session) {
-        session.invalidate();
-        return "redirect:/?logout=true";
-    }
 
 }

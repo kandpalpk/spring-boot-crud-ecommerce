@@ -1,12 +1,18 @@
 package com.SpringBegn.ecom_proj.service;
 
 import com.SpringBegn.ecom_proj.model.Order;
+import com.SpringBegn.ecom_proj.model.User;
 import com.SpringBegn.ecom_proj.repo.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.SpringBegn.ecom_proj.repo.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 
 @Service
 public class OrderService {
@@ -17,10 +23,23 @@ public class OrderService {
     @Autowired
     private CartService cartService;
 
+    @Autowired
+    private UserRepository userRepository; // Add this
+
     public Order createOrder(Order order, String sessionId) {
         // Generate unique order number
         order.setOrderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         order.setOrderDate(LocalDateTime.now());
+
+        // Try to get current authenticated user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            User currentUser = userRepository.findByUsername(auth.getName()).orElse(null);
+            if (currentUser != null) {
+                // Use user's email if they're logged in
+                order.setCustomerEmail(currentUser.getEmail());
+            }
+        }
 
         Order savedOrder = orderRepository.save(order);
 

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Debug Orders</title></head>
+<body>
+<h2>Debug Information</h2>
+<p><strong>Current User Email:</strong> <span th:text="${userEmail}"></span></p>
+<h3>All Orders in System:</h3>
+<div th:each="order : ${allOrders}">
+    <p>Order: <span th:text="${order.orderNumber}"></span> |
+        Email: <span th:text="${order.customerEmail}"></span> |
+        Name: <span th:text="${order.customerName}"></span> |
+        Date: <span th:text="${order.orderDate}"></span></p>
+</div>
+</body>
+</html>

@@ -181,7 +181,7 @@
             const data = await response.json();
 
             if (response.ok && data.token) {
-                // Store JWT token and user info
+                // Store JWT token and user info in localStorage
                 localStorage.setItem('jwtToken', data.token);
                 localStorage.setItem('user', JSON.stringify({
                     id: data.id,
@@ -190,31 +190,43 @@
                     roles: data.roles
                 }));
 
+                try {
+                    await fetch('/api/auth/set-session', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + data.token,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: data.email,
+                            username: data.username,
+                            userId: data.id.toString()
+                        })
+                    });
+                } catch (error) {
+                    console.log('Session storage failed:', error);
+                }
+
                 // Transfer guest cart to user account
                 try {
-                    const cartTransferResponse = await fetch('/api/auth/transfer-cart', {
+                    await fetch('/api/auth/transfer-cart', {
                         method: 'POST',
                         headers: {
                             'Authorization': 'Bearer ' + data.token,
                             'Content-Type': 'application/json'
                         }
                     });
-
-                    if (cartTransferResponse.ok) {
-                        console.log('Cart transferred successfully');
-                    }
-                } catch (cartError) {
-                    console.log('Cart transfer failed, but login successful:', cartError);
+                } catch (error) {
+                    console.log('Cart transfer failed:', error);
                 }
 
-                // Show success message
+                // Show success and redirect
                 loginBtn.innerHTML = '<i class="fas fa-check me-2"></i>Login Successful!';
                 loginBtn.classList.remove('btn-primary');
                 loginBtn.classList.add('btn-success');
 
                 showAlert('successAlert', 'successMessage', 'Welcome back! Redirecting...');
 
-                // Redirect to home page
                 setTimeout(() => {
                     const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
                     window.location.href = redirectUrl;

@@ -9,6 +9,7 @@ import com.SpringBegn.ecom_proj.model.User;
 import com.SpringBegn.ecom_proj.repo.UserRepository;
 import com.SpringBegn.ecom_proj.security.JwtUtils;
 import com.SpringBegn.ecom_proj.security.UserPrincipal;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -117,4 +119,32 @@ public class AuthController {
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok(new MessageResponse("User signed out successfully!"));
     }
+
+    @PostMapping("/create-admin")
+    public ResponseEntity<?> createAdmin() {
+        if (userRepository.existsByUsername("admin")) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Admin already exists!"));
+        }
+
+        User admin = new User("admin", "admin@ecommerce.com", encoder.encode("admin123"));
+        admin.getRoles().clear();
+        admin.getRoles().add(Role.ADMIN);
+        admin.setFirstName("Admin");
+        admin.setLastName("User");
+
+        userRepository.save(admin);
+
+        return ResponseEntity.ok(new MessageResponse("Admin created! Username: admin, Password: admin123"));
+    }
+
+    @PostMapping("/set-session")
+    public ResponseEntity<?> setSession(@RequestBody Map<String, String> userData,
+                                        HttpSession session) {
+        session.setAttribute("userEmail", userData.get("email"));
+        session.setAttribute("username", userData.get("username"));
+        session.setAttribute("userId", userData.get("userId"));
+        return ResponseEntity.ok(new MessageResponse("Session set successfully"));
+    }
+
+
 }

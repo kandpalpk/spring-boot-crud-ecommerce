@@ -48,9 +48,23 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Changed this
                 .authorizeHttpRequests(auth ->
-                        auth.anyRequest().permitAll()  // ALLOW EVERYTHING FOR NOW
+                        auth
+                                // Public endpoints
+                                .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/", "/login", "/register", "/logout").permitAll()
+                                .requestMatchers("/cart", "/checkout", "/order-success/**").permitAll()
+                                .requestMatchers("/api/products/**", "/api/product/**").permitAll()
+                                .requestMatchers("/add-to-cart/**", "/remove-from-cart/**", "/search", "/edit/**", "/delete/**", "/products", "/update/**").permitAll()
+
+                                // Protected web pages - require session or JWT
+                                .requestMatchers("/orders", "/profile").authenticated()
+
+                                // Admin endpoints
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                                .anyRequest().permitAll()
                 );
 
         http.authenticationProvider(authenticationProvider());
@@ -58,4 +72,6 @@ public class WebSecurityConfig {
 
         return http.build();
     }
+
+
 }

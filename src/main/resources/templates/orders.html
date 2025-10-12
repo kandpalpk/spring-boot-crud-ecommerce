@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Orders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2><i class="fas fa-shopping-bag"></i> My Orders</h2>
+    <a href="/" class="btn btn-primary mb-3">Back to Shopping</a>
+
+    <div th:if="${#lists.isEmpty(orders)}" class="text-center py-5">
+        <h4>No Orders Yet</h4>
+        <p>You haven't placed any orders.</p>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(orders)}">
+        <div class="card mb-3" th:each="order : ${orders}">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong th:text="${order.orderNumber}">Order Number</strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span th:text="${#temporals.format(order.orderDate, 'dd-MM-yyyy HH:mm')}">Date</span>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="badge bg-info" th:text="${order.status}">Status</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>₹<span th:text="${order.totalAmount}">0.00</span></strong>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <strong>Name:</strong> <span th:text="${order.customerName}"></span> |
+                        <strong>Email:</strong> <span th:text="${order.customerEmail}"></span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

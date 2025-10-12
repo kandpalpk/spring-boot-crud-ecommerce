@@ -1,11 +1,14 @@
 package com.SpringBegn.ecom_proj.service;
 
+import com.SpringBegn.ecom_proj.model.CartItem;
 import com.SpringBegn.ecom_proj.model.Product;
+import com.SpringBegn.ecom_proj.repo.CartItemRepository;
 import com.SpringBegn.ecom_proj.repo.ProductRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -16,6 +19,10 @@ public class ProductService {
 
     @Autowired
     private ProductRepo repo;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
     public List<Product> getAllProducts() {
         return repo.findAll();
     }
@@ -77,9 +84,14 @@ public class ProductService {
         return repo.save(existingProduct);
     }
 
+    @Transactional
     public void deleteProduct(int id) {
-         repo.deleteById(id);
+        // Remove all cart items containing this product first
+        List<CartItem> cartItems = cartItemRepository.findByProduct_Id(id);
+        cartItemRepository.deleteAll(cartItems);
+        repo.deleteById(id);
     }
+
 
     public List<Product> searchProducts(String keyword) {
         return repo.searchProducts(keyword);
