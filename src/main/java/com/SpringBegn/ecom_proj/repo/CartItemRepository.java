@@ -1,6 +1,7 @@
 package com.SpringBegn.ecom_proj.repo;
 
 import com.SpringBegn.ecom_proj.model.CartItem;
+import com.SpringBegn.ecom_proj.model.User;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,4 +16,16 @@ public interface CartItemRepository extends JpaRepository<CartItem,Long> {
     @Modifying
     @Transactional
     void deleteBySessionId(String sessionId);
+
+    List<CartItem> findByUser(User user);
+
+    @Modifying
+    @Transactional
+    void deleteByUser(User user);
+
+    // Find specific item for user
+    CartItem findByUserAndProduct_Id(User user, int productId);
+
+    // Find specific item for session
+    CartItem findBySessionIdAndProduct_Id(String sessionId, int productId);
 }
